@@ -1,44 +1,62 @@
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
+const cheerio = require("cheerio");
 
 const app = express();
 app.use(cors());
 
-// A porta será configurada pelo Railway ou será 3000 localmente
 const PORT = process.env.PORT || 3000;
 
-// API para buscar todos os jogos de uma lista (essa parte precisa de uma fonte de dados real, como uma API ou banco de dados)
-const getSteamGames = async () => {
+// Função para buscar o preço de um jogo diretamente na página da Steam
+const getSteamGamePrice = async (appId) => {
   try {
-    // Exemplo fictício de uma API que retorna jogos
-    const response = await axios.get("https://api.steampowered.com/ISteamApps/GetAppList/v2");
-    return response.data.applist.apps; // Supondo que 'apps' seja a lista de jogos
+    const url = `https://store.steampowered.com/app/${appId}`; // URL da Steam Store para o jogo
+    const response = await axios.get(url); // Faz a requisição da página
+    const $ = cheerio.load(response.data); // Carrega a resposta HTML com cheerio
+
+    // Abaixo, pegamos o preço do jogo na página HTML
+    const price = $(".game_purchase_price.price").text().trim(); // Extrai o preço
+    return price || "Preço não encontrado"; // Retorna o preço, ou uma mensagem de erro
   } catch (error) {
-    console.error("Erro ao buscar jogos da Steam:", error);
-    return []; // Retorna um array vazio em caso de erro
+    console.error("Erro ao buscar preço:", error);
+    return "Erro ao buscar preço";
   }
 };
 
-// Rota de raiz para testar se a API está funcionando
-app.get("/", (req, res) => {
-  res.send("API está funcionando! Acesse /games para ver os jogos.");
-});
-
-// Rota para buscar todos os jogos
+// Rota para buscar todos os jogos com preço (aqui estamos usando o appId da Steam)
 app.get("/games", async (req, res) => {
-  const games = await getSteamGames();
-  res.json(games);
+  const games = [
+    { id: 1, name: "Elden Ring", appId: 1091500 },
+    { id: 2, name: "GTA V", appId: 271590 }
+  ];
+
+  // Para cada jogo, buscamos o preço da Steam
+  for (const game of games) {
+    const price = await getSteamGamePrice(game.appId);
+    game.price = price; // Adiciona o preço ao objeto do jogo
+  }
+
+  res.json(games); // Retorna a lista de jogos com preços
 });
 
-// Rota para buscar um jogo específico, com a modificação para usar "_" em vez de espaços
+// Rota para buscar um jogo específico
 app.get("/games/:name", async (req, res) => {
-  const gameName = req.params.name.replace(/_/g, " "); // Substitui underscores por espaços
-  const games = await getSteamGames();
+  const gameName = req.params.name.replace(/_/g, " "); // Substitui "_" por espaços
+  const games = [
+    { id: 1, name: "Elden Ring", appId: 1091500 },
+    { id: 2, name: "GTA V", appId: 271590 }
+  ];
+
   const game = games.find(g => g.name.toLowerCase() === gameName.toLowerCase());
 
-  if (game) res.json(game);
-  else res.status(404).json({ error: "Jogo não encontrado" });
+  if (game) {
+    const price = await getSteamGamePrice(game.appId);
+    game.price = price; // Adiciona o preço ao jogo
+    res.json(game); // Retorna o jogo com preço
+  } else {
+    res.status(404).json({ error: "Jogo não encontrado" });
+  }
 });
 
 // Inicializa o servidor
