@@ -1,122 +1,44 @@
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
-const cheerio = require("cheerio");  // Usado para fazer scraping de páginas HTML
-require("dotenv").config(); // Para carregar variáveis de ambiente
 
 const app = express();
 app.use(cors());
 
-// Porta do servidor (definida pelo Railway ou 3000 localmente)
+// A porta será configurada pelo Railway ou será 3000 localmente
 const PORT = process.env.PORT || 3000;
 
-// Função para buscar preço de um jogo na Steam
-const getSteamPrice = async (gameId) => {
+// API para buscar todos os jogos de uma lista (essa parte precisa de uma fonte de dados real, como uma API ou banco de dados)
+const getSteamGames = async () => {
   try {
-    const response = await axios.get(`https://store.steampowered.com/api/appdetails?appids=${gameId}`);
-    const gameData = response.data[gameId];
-
-    if (gameData.success && gameData.data.price_overview) {
-      return {
-        price: gameData.data.price_overview.final / 100, // Preço em centavos, por isso dividimos por 100
-        currency: "BRL", // A Steam já retorna em BRL
-        url: gameData.data.url,
-      };
-    }
-    return null;
+    // Exemplo fictício de uma API que retorna jogos
+    const response = await axios.get("https://api.steampowered.com/ISteamApps/GetAppList/v2");
+    return response.data.applist.apps; // Supondo que 'apps' seja a lista de jogos
   } catch (error) {
-    console.error(error);
-    return null;
+    console.error("Erro ao buscar jogos da Steam:", error);
+    return []; // Retorna um array vazio em caso de erro
   }
 };
-
-// Função para buscar preço de um jogo na Loja XYZ (exemplo fictício)
-const getLojaXYZPrice = async (gameName) => {
-  try {
-    // Vamos buscar o preço na Loja XYZ via scraping, ou simular com um preço fixo
-    const response = await axios.get(`https://www.loja-xyz.com.br/${gameName}`);
-    const $ = cheerio.load(response.data); // Carregar HTML
-
-    // Exemplo de scraping para pegar o preço
-    const priceText = $("span.price").text().trim(); // Supondo que o preço está em um span com classe "price"
-    const price = parseFloat(priceText.replace("R$", "").replace(",", ".").trim());
-
-    return {
-      price,
-      currency: "BRL",
-      url: `https://www.loja-xyz.com.br/${gameName}`,
-    };
-  } catch (error) {
-    console.error(error);
-    return null;
-  }
-};
-
-// Simulação de banco de dados para os jogos (por enquanto)
-const games = [
-  { id: 1, name: "Elden Ring", store: "Steam", storeId: 123456 }, // ID fictício da Steam
-  { id: 2, name: "GTA V", store: "Loja XYZ" },
-];
 
 // Rota de raiz para testar se a API está funcionando
 app.get("/", (req, res) => {
   res.send("API está funcionando! Acesse /games para ver os jogos.");
 });
 
-// Rota para buscar todos os jogos com os preços reais
+// Rota para buscar todos os jogos
 app.get("/games", async (req, res) => {
-  const gamePrices = [];
-
-  for (const game of games) {
-    let priceData;
-
-    if (game.store === "Steam") {
-      priceData = await getSteamPrice(game.storeId);
-    } else if (game.store === "Loja XYZ") {
-      priceData = await getLojaXYZPrice(game.name);
-    }
-
-    if (priceData) {
-      gamePrices.push({
-        name: game.name,
-        store: game.store,
-        price: priceData.price,
-        currency: priceData.currency,
-        url: priceData.url,
-      });
-    }
-  }
-
-  res.json(gamePrices);
+  const games = await getSteamGames();
+  res.json(games);
 });
 
-// Rota para buscar um jogo específico
+// Rota para buscar um jogo específico, com a modificação para usar "_" em vez de espaços
 app.get("/games/:name", async (req, res) => {
-  const game = games.find(g => g.name.toLowerCase() === req.params.name.toLowerCase());
-  
-  if (game) {
-    let priceData;
-    
-    if (game.store === "Steam") {
-      priceData = await getSteamPrice(game.storeId);
-    } else if (game.store === "Loja XYZ") {
-      priceData = await getLojaXYZPrice(game.name);
-    }
-    
-    if (priceData) {
-      res.json({
-        name: game.name,
-        store: game.store,
-        price: priceData.price,
-        currency: priceData.currency,
-        url: priceData.url,
-      });
-    } else {
-      res.status(404).json({ error: "Preço não encontrado" });
-    }
-  } else {
-    res.status(404).json({ error: "Jogo não encontrado" });
-  }
+  const gameName = req.params.name.replace(/_/g, " "); // Substitui underscores por espaços
+  const games = await getSteamGames();
+  const game = games.find(g => g.name.toLowerCase() === gameName.toLowerCase());
+
+  if (game) res.json(game);
+  else res.status(404).json({ error: "Jogo não encontrado" });
 });
 
 // Inicializa o servidor
