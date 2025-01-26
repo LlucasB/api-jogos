@@ -51,11 +51,11 @@ app.get("/games", async (req, res) => {
 
 // Rota para buscar um jogo específico
 app.get("/games/:name", async (req, res) => {
-  const gameName = req.params.name.replace(/_/g, " "); // Substitui "_" por espaços
+  const gameName = req.params.name.replace(/_/g, " ").toLowerCase(); // Substitui "_" por espaços e normaliza para minúsculas
   const games = await getAllGames();
 
-  // Busca o jogo, ignorando maiúsculas/minúsculas
-  const game = games.find(g => g.name.toLowerCase() === gameName.toLowerCase());
+  // Busca o jogo com uma comparação insensível a maiúsculas/minúsculas
+  const game = games.find(g => g.name.toLowerCase() === gameName);
 
   if (game) {
     res.json(game); // Retorna o jogo encontrado
