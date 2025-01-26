@@ -5,22 +5,25 @@ const cors = require("cors");
 const app = express();
 app.use(cors());
 
-// A porta será configurada pelo Railway ou será 3000 localmente
+// Substitua com sua chave de API obtida no IsThereAnyDeal
+const API_KEY = '1720f2e1097c7a061fa37f3b5f263564a8000bed'; 
+
 const PORT = process.env.PORT || 3000;
 
-// Função para buscar os jogos na Rawg API
+// Função para buscar todos os jogos da IsThereAnyDeal
 const getAllGames = async () => {
   try {
-    const url = 'https://api.rawg.io/api/games?key=YOUR_API_KEY';  // Aqui você pode usar a Rawg API
+    const url = `https://api.isthereanydeal.com/v02/price/?key=${API_KEY}&plains=true`;
     const response = await axios.get(url);
-    const games = response.data.results;
 
-    // Processa os jogos, pegando nome, preço e outras informações relevantes
+    const games = response.data.data;
+
+    // Processa os jogos e pega nome, preço e outras informações relevantes
     const gameList = games.map(game => ({
       id: game.id,
       name: game.name,
-      price: "Indisponível", // A Rawg API não fornece o preço diretamente
-      url: game.url
+      price: game.price_new ? game.price_new : "Indisponível",
+      url: `https://isthereanydeal.com/game/${game.id}`
     }));
 
     return gameList;
@@ -35,7 +38,7 @@ app.get("/", (req, res) => {
   res.send("API está funcionando! Acesse /games para ver os jogos.");
 });
 
-// Rota para buscar todos os jogos com preços
+// Rota para buscar todos os jogos
 app.get("/games", async (req, res) => {
   const games = await getAllGames();
   if (games.length > 0) {
@@ -50,10 +53,11 @@ app.get("/games/:name", async (req, res) => {
   const gameName = req.params.name.replace(/_/g, " "); // Substitui "_" por espaços
   const games = await getAllGames();
 
+  // Busca o jogo, ignorando maiúsculas/minúsculas
   const game = games.find(g => g.name.toLowerCase() === gameName.toLowerCase());
 
   if (game) {
-    res.json(game); // Retorna o jogo
+    res.json(game); // Retorna o jogo encontrado
   } else {
     res.status(404).json({ error: "Jogo não encontrado" });
   }
