@@ -58,7 +58,7 @@ app.get("/games/:name", async (req, res) => {
   console.log("Lista de jogos: ", games.map(game => game.name)); // Exibe todos os nomes dos jogos
 
   // Busca o jogo
-  const game = games.find(g => g.name.toLowerCase() === gameName);
+  const game = games.find(g => g.name.toLowerCase().includes(gameName));
 
   if (game) {
     res.json(game); // Retorna o jogo encontrado
@@ -66,7 +66,6 @@ app.get("/games/:name", async (req, res) => {
     res.status(404).json({ error: "Jogo não encontrado" });
   }
 });
-
 
 // Inicializa o servidor
 app.listen(PORT, () => console.log(`API rodando em http://localhost:${PORT}`));
