@@ -20,6 +20,30 @@ const getSteamGames = async () => {
   }
 };
 
+// Função para buscar detalhes do jogo incluindo preço
+const getGameDetails = async (appId) => {
+  try {
+    const response = await axios.get(`http://store.steampowered.com/api/appdetails?appids=${appId}`);
+    if (response.data[appId] && response.data[appId].success) {
+      const gameData = response.data[appId].data;
+      return {
+        name: gameData.name,
+        appid: appId,
+        price: gameData.price_overview ? {
+          initial: gameData.price_overview.initial / 100, // Convertido para dólares
+          final: gameData.price_overview.final / 100,
+          discount: gameData.price_overview.discount_percent
+        } : 'Free-to-play'
+      };
+    } else {
+      return { error: "Jogo não encontrado ou informações indisponíveis" };
+    }
+  } catch (error) {
+    console.error("Erro ao buscar detalhes do jogo:", error);
+    return { error: "Erro ao obter informações do jogo" };
+  }
+};
+
 // Rota de raiz para testar se a API está funcionando
 app.get("/", (req, res) => {
   res.send("API está funcionando! Acesse /games para ver os jogos.");
@@ -31,14 +55,16 @@ app.get("/games", async (req, res) => {
   res.json(games);
 });
 
-// Rota para buscar um jogo específico
-app.get("/games/:name", async (req, res) => {
-  const gameName = req.params.name.replace(/_/g, " "); // Substitui "_" por espaços
-  const games = await getSteamGames();
-  const game = games.find(g => g.name.toLowerCase() === gameName.toLowerCase());
+// Rota para buscar detalhes de um jogo específico
+app.get("/games/:id", async (req, res) => {
+  const gameId = req.params.id;
+  const gameDetails = await getGameDetails(gameId);
 
-  if (game) res.json(game);
-  else res.status(404).json({ error: "Jogo não encontrado" });
+  if (gameDetails.error) {
+    res.status(404).json(gameDetails);
+  } else {
+    res.json(gameDetails);
+  }
 });
 
 // Inicializa o servidor
