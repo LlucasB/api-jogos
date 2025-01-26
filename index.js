@@ -20,37 +20,32 @@ const getSteamGames = async () => {
   }
 };
 
-// Função para buscar o ID do jogo pelo nome
-const getGameIdByName = async (gameName) => {
-  try {
-    const games = await getSteamGames();
-    const game = games.find(g => g.name.toLowerCase() === gameName.toLowerCase());
-    return game ? game.appid : null;
-  } catch (error) {
-    console.error("Erro ao buscar o ID do jogo:", error);
-    return null;
-  }
-};
-
 // Função para buscar detalhes do jogo incluindo preço
 const getGameDetails = async (appId) => {
   try {
     const response = await axios.get(`http://store.steampowered.com/api/appdetails?appids=${appId}`);
     if (response.data[appId] && response.data[appId].success) {
       const gameData = response.data[appId].data;
-
-      // Se o jogo não for gratuito, converte os preços de centavos para a moeda local (dólares)
-      const price = gameData.price_overview ? {
-        initial: (gameData.price_overview.initial / 100).toFixed(2), // Convertido para dólares com 2 casas decimais
-        final: (gameData.price_overview.final / 100).toFixed(2),
-        discount: gameData.price_overview.discount_percent || 0
-      } : 'Free-to-play'; // Caso seja grátis
-
-      return {
-        name: gameData.name,
-        appid: appId,
-        price: price
-      };
+      
+      if (gameData.price_overview) {
+        const price = gameData.price_overview;
+        return {
+          name: gameData.name,
+          appid: appId,
+          price: {
+            initial: (price.initial / 100).toFixed(2), // Preço inicial já em formato com duas casas decimais
+            final: (price.final / 100).toFixed(2), // Preço final
+            discount: price.discount_percent || 0, // Desconto, caso exista
+            currency: price.currency // Moeda usada no preço (pode ser BRL, EUR, etc.)
+          }
+        };
+      } else {
+        return {
+          name: gameData.name,
+          appid: appId,
+          price: 'Free-to-play' // Caso o jogo seja gratuito
+        };
+      }
     } else {
       return { error: "Jogo não encontrado ou informações indisponíveis" };
     }
@@ -71,20 +66,15 @@ app.get("/games", async (req, res) => {
   res.json(games);
 });
 
-// Rota para buscar detalhes de um jogo específico pelo nome
-app.get("/games/:name", async (req, res) => {
-  const gameName = req.params.name;
-  const gameId = await getGameIdByName(gameName);
+// Rota para buscar detalhes de um jogo específico
+app.get("/games/:id", async (req, res) => {
+  const gameId = req.params.id;
+  const gameDetails = await getGameDetails(gameId);
 
-  if (gameId) {
-    const gameDetails = await getGameDetails(gameId);
-    if (gameDetails.error) {
-      res.status(404).json(gameDetails);
-    } else {
-      res.json(gameDetails);
-    }
+  if (gameDetails.error) {
+    res.status(404).json(gameDetails);
   } else {
-    res.status(404).json({ error: "Jogo não encontrado" });
+    res.json(gameDetails);
   }
 });
 
