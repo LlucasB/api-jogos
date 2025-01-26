@@ -50,14 +50,12 @@ app.get("/games", async (req, res) => {
   }
 });
 
-// Rota para buscar um jogo específico
 app.get("/games/:name", async (req, res) => {
   const gameName = req.params.name.replace(/_/g, " ").toLowerCase(); // Substitui "_" por espaços e normaliza para minúsculas
   const games = await getAllGames();
 
-  // Log para depurar e verificar o jogo
   console.log("Procurando jogo:", gameName);
-  console.log("Lista de jogos: ", games);
+  console.log("Lista de jogos: ", games.map(game => game.name)); // Exibe todos os nomes dos jogos
 
   // Busca o jogo
   const game = games.find(g => g.name.toLowerCase() === gameName);
@@ -68,6 +66,7 @@ app.get("/games/:name", async (req, res) => {
     res.status(404).json({ error: "Jogo não encontrado" });
   }
 });
+
 
 // Inicializa o servidor
 app.listen(PORT, () => console.log(`API rodando em http://localhost:${PORT}`));
