@@ -6,30 +6,25 @@ const app = express();
 app.use(cors());
 
 // Substitua com sua chave de API obtida no IsThereAnyDeal
-const API_KEY = '1720f2e1097c7a061fa37f3b5f263564a8000bed'; 
+const API_KEY = '1720f2e1097c7a061fa37f3b5f263564a8000bed';
 
 const PORT = process.env.PORT || 3000;
 
 // Função para buscar todos os jogos da IsThereAnyDeal
 const getAllGames = async () => {
   try {
-    // Usar o endpoint correto e os parâmetros corretos da API
-    const url = `https://api.isthereanydeal.com/v02/price/?key=${API_KEY}&plains=true&bundle=off`;
+    const url = `https://api.isthereanydeal.com/v02/price/?key=${API_KEY}&plains=true`;
     const response = await axios.get(url);
-    const games = response.data.data;
 
-    // Se não retornar nada, verifica se a estrutura de dados foi obtida corretamente
-    if (!games) {
-      console.error("Não há dados de jogos disponíveis.");
-      return [];
-    }
+    const games = response.data.data;
 
     // Processa os jogos e pega nome, preço e outras informações relevantes
     const gameList = games.map(game => ({
       id: game.id,
-      name: game.name,
-      price: game.price_new ? game.price_new : "Indisponível",
-      url: `https://isthereanydeal.com/game/${game.id}`
+      name: game.title,
+      currentPrice: game.lastPrice ? `${game.lastPrice.amount} ${game.lastPrice.currency}` : "Indisponível",
+      historicalPrice: game.historyLow ? `${game.historyLow.amount} ${game.historyLow.currency}` : "Indisponível",
+      url: `https://isthereanydeal.com/game/${game.slug}`
     }));
 
     return gameList;
