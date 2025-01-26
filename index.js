@@ -13,10 +13,16 @@ const PORT = process.env.PORT || 3000;
 // Função para buscar todos os jogos da IsThereAnyDeal
 const getAllGames = async () => {
   try {
-    const url = `https://api.isthereanydeal.com/v02/price/?key=${API_KEY}&plains=true`;
+    // Usar o endpoint correto e os parâmetros corretos da API
+    const url = `https://api.isthereanydeal.com/v02/price/?key=${API_KEY}&plains=true&bundle=off`;
     const response = await axios.get(url);
-
     const games = response.data.data;
+
+    // Se não retornar nada, verifica se a estrutura de dados foi obtida corretamente
+    if (!games) {
+      console.error("Não há dados de jogos disponíveis.");
+      return [];
+    }
 
     // Processa os jogos e pega nome, preço e outras informações relevantes
     const gameList = games.map(game => ({
