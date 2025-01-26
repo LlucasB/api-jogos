@@ -20,6 +20,18 @@ const getSteamGames = async () => {
   }
 };
 
+// Função para buscar o ID do jogo pelo nome
+const getGameIdByName = async (gameName) => {
+  try {
+    const games = await getSteamGames();
+    const game = games.find(g => g.name.toLowerCase() === gameName.toLowerCase());
+    return game ? game.appid : null;
+  } catch (error) {
+    console.error("Erro ao buscar o ID do jogo:", error);
+    return null;
+  }
+};
+
 // Função para buscar detalhes do jogo incluindo preço
 const getGameDetails = async (appId) => {
   try {
@@ -59,15 +71,20 @@ app.get("/games", async (req, res) => {
   res.json(games);
 });
 
-// Rota para buscar detalhes de um jogo específico
-app.get("/games/:id", async (req, res) => {
-  const gameId = req.params.id;
-  const gameDetails = await getGameDetails(gameId);
+// Rota para buscar detalhes de um jogo específico pelo nome
+app.get("/games/:name", async (req, res) => {
+  const gameName = req.params.name;
+  const gameId = await getGameIdByName(gameName);
 
-  if (gameDetails.error) {
-    res.status(404).json(gameDetails);
+  if (gameId) {
+    const gameDetails = await getGameDetails(gameId);
+    if (gameDetails.error) {
+      res.status(404).json(gameDetails);
+    } else {
+      res.json(gameDetails);
+    }
   } else {
-    res.json(gameDetails);
+    res.status(404).json({ error: "Jogo não encontrado" });
   }
 });
 
