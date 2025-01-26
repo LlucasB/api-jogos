@@ -26,14 +26,18 @@ const getGameDetails = async (appId) => {
     const response = await axios.get(`http://store.steampowered.com/api/appdetails?appids=${appId}`);
     if (response.data[appId] && response.data[appId].success) {
       const gameData = response.data[appId].data;
+
+      // Se o jogo não for gratuito, converte os preços de centavos para a moeda local (dólares)
+      const price = gameData.price_overview ? {
+        initial: (gameData.price_overview.initial / 100).toFixed(2), // Convertido para dólares com 2 casas decimais
+        final: (gameData.price_overview.final / 100).toFixed(2),
+        discount: gameData.price_overview.discount_percent || 0
+      } : 'Free-to-play'; // Caso seja grátis
+
       return {
         name: gameData.name,
         appid: appId,
-        price: gameData.price_overview ? {
-          initial: gameData.price_overview.initial / 100, // Convertido para dólares
-          final: gameData.price_overview.final / 100,
-          discount: gameData.price_overview.discount_percent
-        } : 'Free-to-play'
+        price: price
       };
     } else {
       return { error: "Jogo não encontrado ou informações indisponíveis" };
